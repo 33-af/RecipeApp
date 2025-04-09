@@ -42,10 +42,6 @@ export default function SingUp() {
         mutation.mutate(data)
     }
 
-    const {user,token} = useAuthStore()
-
-console.log("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", user,token)
-
     return (
         <section className="flex items-center justify-between  container">
             <div className="bg-[#FCE2CE] pt-[132px] pl-8 rounded-t-[394px]">
