@@ -7,23 +7,54 @@ import Error from 'next/error';
 // import AsyncStorage from '@react-native-async-storage/async-storage';
 // import { headers } from 'next/headers';
 
+
+
+
 type User = {
   username: string;
   email: string;
-  _id: string;
+  profileImage?:string;
+  createdAt?:string;
+  _id?: string;
+};
+
+export type SignInProps={
+  email: string;
+  password: string;
+}
+
+
+type Recipe = {
+  _id: number;
+  title: string;
+  caption: string;
+  image: string;
+  rating: number;
+  user:{
+    _id:number;
+    username:string;
+    profileImage:string
+  }
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 type AuthStore = {
   user: User | null;
   token: string | null;
   isLoading: boolean;
+  recipes: Recipe[] | null;
+  signIn: (data: SignInProps) => Promise<{ success: boolean }>;
   signUp: (data: { username: string; email: string; password: string }) => Promise<{ success: boolean }>;
+  getRecipes: () => Promise<Recipe[]>;
+
 };
 
-export const useAuthStore = create<AuthStore>((set) => ({
-  user: JSON.parse(localStorage.getItem('user') || 'null'),
-  token: localStorage.getItem('token'),
+export const useAuthStore = create<AuthStore>((set, get) => ({
+  user: null, 
   isLoading: false,
+  recipes:null,
+  token:null,
 
   signUp: async ({ username, email, password }) => {
     set({ isLoading: true });
@@ -38,17 +69,24 @@ export const useAuthStore = create<AuthStore>((set) => ({
       });
 
       const data = await response.json();
+
       console.log("Response data:", data);
 
       if (!response.ok) throw new Error(data.message || "Something went wrong");
+      
 
 
 
-      set({ token: data.token, user: data.user, isLoading: false });
+      set({token:data.token, user: data.user, isLoading: false });
+      const currentUser = get().user; // Получаем текущего пользователя после обновления состояния
+      console.log("User Store", currentUser);
+
+    
 
       return { success: true };
-    } catch (error) {
+    } catch (error: unknown) {
       set({ isLoading: false });
+      console.error("SignUp error:", error); // Логируем ошибку
       return { success: false };
     }
   },
@@ -80,24 +118,60 @@ export const useAuthStore = create<AuthStore>((set) => ({
       return { success: false };
     }
   },
-  
 
-checkAuth: async () => {
-  try{
-const token = await localStorage.getItem("token");
-const userJson = await localStorage.getItem("user");
-const user =userJson ? JSON.parse(userJson) : null;
-set({token, user});
-  }catch(e){
-console.log("Error", e)
+  
+ // Inside useAuthStore or however your store is structured
+ getRecipes: async () => {
+  try {
+    const cookies = document.cookie;
+console.log("Cookies:", cookies);  // Log the full cookie string
+
+const token = typeof document !== 'undefined'
+  ? cookies.split('; ').find(row => row.startsWith('token='))?.split('=')[1]
+  : null;
+
+console.log("Extracted Token:", token);  // Log the extracted token
+if (!token) {
+  console.log("No token");
+}
+
+
+    const res = await fetch("https://recipe-yt.onrender.com/api/recipes", {
+      method: 'GET',
+      // headers: {
+      //   'Authorization': `Bearer ${token}`, // Include the token in the Authorization header
+      // },
+      credentials: 'include', // Keep this if you're sending cookies, as in your original code
+    });
+    const data = await res.json();
+    return data || [];
+  } catch (err) {
+    console.error("Error fetching recipes:", err);
   }
 },
-logout: async() =>{
-  await localStorage.removeItem("token");
-  await localStorage.removeItem("user");
-  set({token: null, user: null})
-}
-}));
+
+
+
+
+
+  
+
+// checkAuth: async () => {
+//   try{
+// // const token = await localStorage.getItem("token");
+// // const userJson = await localStorage.getItem("user");
+// // const user =userJson ? JSON.parse(userJson) : null;
+// set({token, user});
+//   }catch(e){
+// console.log("Error", e)
+//   }
+// },
+// logout: async() =>{
+//   await localStorage.removeItem("token");
+//   await localStorage.removeItem("user");
+//   set({token: null, user: null})
+// }
+}))
 
 
   // user: { _id: 0, username: '', email: '', profileImage: null },
@@ -177,34 +251,7 @@ logout: async() =>{
 
 
 
-  // getRecipes: async () => {
-  //   set({ isLoading: true });
-  //   try {
-  //     const userCockies = Cookies.get('token'); // Получаем токен из куки
-  //     console.log(userCockies); // Логируем, что содержится в куке
-
-  //     if (!userCockies) throw new Error("Кукисов нету"); // Если куки нету, выбрасываем ошибку
-
-  //     // Токен не нужно парсить, если это просто строка
-  //     const token = userCockies;
-
-  //     // Делаем запрос с токеном в заголовке Authorization
-  //     const response = await axios.get(`${BACKEND_API}/api/recipes`, {
-  //       headers: {
-  //         Authorization: `Bearer ${token}`
-  //       },
-  //       withCredentials: true
-  //     });
-
-  //     set({ recipes: response.data.recipes, isLoading: false });
-  //     console.log("Recipes after Getting:", get().recipes);
-  //     return response.data.recipes;
-  //   } catch (e: any) {
-  //     console.error('Ошибка при получении рецептов:', e);
-  //     set({ isLoading: false, error: e });
-  //     return [];
-  //   }
-  // }
+ 
 
 
 // }));
